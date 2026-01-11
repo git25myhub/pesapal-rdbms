@@ -6,6 +6,9 @@ def parse(sql):
     if sql.upper().startswith("CREATE TABLE"):
         return parse_create_table(sql)
 
+    if sql.upper().startswith("INSERT INTO"):
+        return parse_insert(sql)
+
     raise ValueError("Unsupported SQL")
 
 def parse_create_table(sql):
@@ -34,4 +37,30 @@ def parse_create_table(sql):
         "type": "CREATE_TABLE",
         "table": table_name,
         "columns": columns
+    }
+
+def parse_insert(sql):
+    pattern = r"INSERT INTO (\w+)\s+VALUES\s*\((.+)\)"
+    match = re.match(pattern, sql, re.IGNORECASE)
+
+    if not match:
+        raise ValueError("Invalid INSERT syntax")
+
+    table = match.group(1)
+    raw_values = match.group(2)
+
+    values = []
+    for val in raw_values.split(","):
+        val = val.strip()
+        if val.startswith('"') and val.endswith('"'):
+            values.append(val[1:-1])
+        elif val.isdigit():
+            values.append(int(val))
+        else:
+            raise ValueError(f"Unsupported value: {val}")
+
+    return {
+        "type": "INSERT",
+        "table": table,
+        "values": values
     }

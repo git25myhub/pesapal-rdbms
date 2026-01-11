@@ -28,7 +28,7 @@ This project prioritizes:
 
 Limitations are intentional and documented. The focus is on learning, transparency, and system-level thinking.
 
-## ✨ Features Implemented (Part 1)
+## ✨ Features Implemented (Part 1–2)
 
 ### ✅ Interactive REPL
 - Custom command-line interface
@@ -61,12 +61,29 @@ CREATE TABLE users (
 );
 ```
 
+### ✅ Data Insertion (`INSERT INTO`)
+- Insert rows into an existing table
+- Values must match the table schema order
+- Supports basic data types:
+  - `INT`
+  - `TEXT` (double-quoted)
+
+Example:
+```sql
+INSERT INTO users VALUES (1, "stephen@example.com");
+INSERT INTO users VALUES (2, "jane@example.com");
+```
+
+Behavior:
+- Insertion fails if the target table does not exist
+- Insertion fails if the number of values does not match the schema
+
 ### ✅ In-Memory Schema Representation
 - Tables are stored in memory using Python data structures
 - Each table tracks:
   - Column definitions
   - Constraints
-  - Rows (initially empty)
+  - Rows (populated via INSERT statements)
 
 ## 🧱 Current Architecture
 ```
@@ -104,32 +121,51 @@ python -m mydb.repl
 ```
 
 ## 🖥️ Example Session
-```
+```text
 Welcome to MyDB. Type 'exit' to quit.
+
 mydb> CREATE TABLE users (
 ....>   id INT PRIMARY KEY,
 ....>   email TEXT UNIQUE
 ....> );
 Table 'users' created
+
+mydb> INSERT INTO users VALUES (1, "stephen@example.com");
+1 row inserted
+
+mydb> INSERT INTO users VALUES (2, "jane@example.com");
+1 row inserted
 ```
 
 ## 🚧 Known Limitations (Intentional)
 - SQL statements must end with a semicolon (;)
-- Only CREATE TABLE is supported at this stage
+- Only `CREATE TABLE` and `INSERT INTO` are supported at this stage
+- No data retrieval (`SELECT`) yet
 - No data persistence yet (in-memory only)
-- No CRUD operations beyond table creation
 - No query optimization
 
 These limitations will be addressed incrementally in later stages.
 
 ## 🛣️ Roadmap (Next Steps)
 Planned features:
-- INSERT INTO statements
-- SELECT, UPDATE, DELETE
+- SELECT queries
+- UPDATE and DELETE operations
 - Disk persistence (JSON-based)
 - Primary & unique key indexing
 - Basic JOIN support
 - Simple web application demo using this database
+
+## 🧾 Supported SQL Syntax (Current)
+
+```sql
+CREATE TABLE table_name (
+  column TYPE [PRIMARY KEY] [UNIQUE]
+);
+
+INSERT INTO table_name VALUES (...);
+```
+
+This grammar will be extended incrementally.
 
 ## 📚 References & Credits
 - PostgreSQL documentation (conceptual reference)
