@@ -155,6 +155,87 @@ Benefits:
 - Transparent to users - indexes are used automatically when available
 - Fallback to table scan for non-indexed columns
 
+### ✅ JOIN Queries
+- Supports INNER JOIN between two tables
+- Equality-based joins (`ON table1.col = table2.col`)
+- Automatically uses indexes when available for optimal performance
+- Result columns are prefixed with table names for clarity
+
+Example:
+```sql
+CREATE TABLE users (id INT PRIMARY KEY, email TEXT UNIQUE);
+CREATE TABLE orders (id INT PRIMARY KEY, user_id INT, amount INT);
+
+INSERT INTO users VALUES (1, "stephen@example.com");
+INSERT INTO users VALUES (2, "jane@example.com");
+INSERT INTO orders VALUES (101, 1, 500);
+INSERT INTO orders VALUES (102, 2, 300);
+
+SELECT * FROM orders JOIN users ON orders.user_id = users.id;
+```
+
+Output:
+```
+orders.id | orders.user_id | orders.amount | users.id | users.email
+----------------------------------------------------------
+101 | 1 | 500 | 1 | stephen@example.com
+102 | 2 | 300 | 2 | jane@example.com
+
+(2 rows)
+```
+
+Behavior:
+- Performs INNER JOIN (only matching rows from both tables)
+- Uses index on right table's join column when available (O(1) lookup)
+- Falls back to nested loop join for non-indexed columns
+- Fully-qualified column names required in ON clause
+
+### ✅ Query Plan Explanation (EXPLAIN)
+- Displays how a query will be executed without actually running it
+- Shows execution strategy including index usage
+- Provides estimated cost analysis
+- Supports EXPLAIN for SELECT and JOIN queries
+
+Example:
+```sql
+EXPLAIN SELECT * FROM orders JOIN users ON orders.user_id = users.id;
+```
+
+Output:
+```
+QUERY PLAN
+----------
+Operation: JOIN
+Join Type: INNER
+Left Table: orders
+Right Table: users
+Join Condition: orders.user_id = users.id
+Strategy: INDEX LOOKUP (users.id)
+Estimated Cost: O(n)
+```
+
+Another example:
+```sql
+EXPLAIN SELECT * FROM users WHERE id = 1;
+```
+
+Output:
+```
+QUERY PLAN
+----------
+Operation: SELECT
+Table: users
+Filter: id = ?
+Strategy: INDEX LOOKUP
+Estimated Cost: O(1)
+```
+
+Benefits:
+- Understand query execution strategy before running
+- Verify index usage for performance optimization
+- Learn how the query planner makes decisions
+- Reflects the engine's real execution behavior
+
 ### ✅ In-Memory Schema Representation
 - Tables are stored in memory using Python data structures
 - Each table tracks:
@@ -280,6 +361,43 @@ id | email
 
 mydb> INSERT INTO users VALUES (1, "duplicate@example.com");
 Error: Duplicate value for indexed column 'id': 1
+
+mydb> CREATE TABLE orders (id INT PRIMARY KEY, user_id INT, amount INT);
+Table 'orders' created
+
+mydb> INSERT INTO orders VALUES (101, 1, 500);
+1 row inserted
+
+mydb> INSERT INTO orders VALUES (102, 2, 300);
+1 row inserted
+
+mydb> SELECT * FROM orders JOIN users ON orders.user_id = users.id;
+orders.id | orders.user_id | orders.amount | users.id | users.email
+----------------------------------------------------------
+101 | 1 | 500 | 1 | updated@mail.com
+102 | 2 | 300 | 2 | jane@example.com
+
+(2 rows)
+
+mydb> EXPLAIN SELECT * FROM orders JOIN users ON orders.user_id = users.id;
+QUERY PLAN
+----------
+Operation: JOIN
+Join Type: INNER
+Left Table: orders
+Right Table: users
+Join Condition: orders.user_id = users.id
+Strategy: INDEX LOOKUP (users.id)
+Estimated Cost: O(n)
+
+mydb> EXPLAIN SELECT * FROM users WHERE id = 1;
+QUERY PLAN
+----------
+Operation: SELECT
+Table: users
+Filter: id = ?
+Strategy: INDEX LOOKUP
+Estimated Cost: O(1)
 ```
 
 ## 🚧 Known Limitations (Intentional)
@@ -291,6 +409,9 @@ Error: Duplicate value for indexed column 'id': 1
 - Persistence is JSON-based (not crash-safe, no transactions yet)
 - Indexes are hash-based (equality only, no range queries or B-trees)
 - No composite indexes (single-column indexes only)
+- Only INNER JOIN is supported (no LEFT/RIGHT/FULL OUTER JOIN)
+- Only one JOIN per query (no multiple JOINs)
+- Fully-qualified column names required in JOIN ON clause
 
 These limitations will be addressed incrementally in later stages.
 
@@ -313,6 +434,12 @@ CREATE TABLE table_name (
 INSERT INTO table_name VALUES (...);
 
 SELECT * FROM table_name [WHERE column = value];
+
+SELECT * FROM table1 JOIN table2 ON table1.col = table2.col;
+
+EXPLAIN SELECT * FROM table_name [WHERE column = value];
+
+EXPLAIN SELECT * FROM table1 JOIN table2 ON table1.col = table2.col;
 
 UPDATE table_name SET column = value WHERE column = value;
 

@@ -14,6 +14,49 @@
         "unique": true
       }
     ],
-    "rows": []
+    "rows": [
+      [
+        1,
+        "stephen@example.com"
+      ],
+      [
+        2,
+        "jane@example.com"
+      ]
+    ]
+  },
+  "orders": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "primary_key": true,
+        "unique": false
+      },
+      {
+        "name": "user_id",
+        "type": "INT",
+        "primary_key": false,
+        "unique": false
+      },
+      {
+        "name": "amount",
+        "type": "INT",
+        "primary_key": false,
+        "unique": false
+      }
+    ],
+    "rows": [
+      [
+        101,
+        1,
+        500
+      ],
+      [
+        102,
+        2,
+        300
+      ]
+    ]
   }
 }

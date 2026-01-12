@@ -22,6 +22,12 @@ class Database:
         if ast["type"] == "DELETE":
             return self.delete(ast)
 
+        if ast["type"] == "JOIN":
+            return self.join(ast)
+
+        if ast["type"] == "EXPLAIN":
+            return self.explain(ast["query"])
+
         raise ValueError("Unsupported command")
 
     def create_table(self, ast):
@@ -175,3 +181,162 @@ class Database:
 
         save_database(self.tables)
         return f"{deleted_count} row(s) deleted"
+
+    def join(self, ast):
+        left_table_name = ast["left_table"]
+        right_table_name = ast["right_table"]
+        left_column = ast["left_column"]
+        right_column = ast["right_column"]
+
+        # Validate tables exist
+        if left_table_name not in self.tables:
+            raise TableNotFoundError(f"Table '{left_table_name}' does not exist")
+        if right_table_name not in self.tables:
+            raise TableNotFoundError(f"Table '{right_table_name}' does not exist")
+
+        left_table = self.tables[left_table_name]
+        right_table = self.tables[right_table_name]
+
+        left_headers = list(left_table.columns.keys())
+        right_headers = list(right_table.columns.keys())
+
+        # Validate columns exist
+        if left_column not in left_headers:
+            raise ValueError(f"Unknown column '{left_column}' in table '{left_table_name}'")
+        if right_column not in right_headers:
+            raise ValueError(f"Unknown column '{right_column}' in table '{right_table_name}'")
+
+        # Prefer index on right table for O(1) lookup
+        result_rows = []
+
+        if right_column in right_table.indexes:
+            # Use index for fast lookup
+            index = right_table.indexes[right_column]["map"]
+            for left_row in left_table.rows:
+                key = left_row[left_column]
+                if key in index:
+                    right_row_index = index[key]
+                    right_row = right_table.rows[right_row_index]
+                    # Combine rows
+                    combined_row = {}
+                    # Add left table columns with table prefix
+                    for col in left_headers:
+                        combined_row[f"{left_table_name}.{col}"] = left_row[col]
+                    # Add right table columns with table prefix
+                    for col in right_headers:
+                        combined_row[f"{right_table_name}.{col}"] = right_row[col]
+                    result_rows.append(combined_row)
+        else:
+            # Fallback to nested loop (table scan)
+            for left_row in left_table.rows:
+                key = left_row[left_column]
+                for right_row in right_table.rows:
+                    if right_row[right_column] == key:
+                        # Combine rows
+                        combined_row = {}
+                        # Add left table columns with table prefix
+                        for col in left_headers:
+                            combined_row[f"{left_table_name}.{col}"] = left_row[col]
+                        # Add right table columns with table prefix
+                        for col in right_headers:
+                            combined_row[f"{right_table_name}.{col}"] = right_row[col]
+                        result_rows.append(combined_row)
+
+        if not result_rows:
+            return "(0 rows)"
+
+        # Build output with prefixed column names
+        output_headers = [f"{left_table_name}.{col}" for col in left_headers] + \
+                        [f"{right_table_name}.{col}" for col in right_headers]
+
+        # Header
+        output = []
+        output.append(" | ".join(output_headers))
+        output.append("-" * (len(output[0])))
+
+        # Rows
+        for row in result_rows:
+            line = " | ".join(str(row[col]) for col in output_headers)
+            output.append(line)
+
+        output.append(f"\n({len(result_rows)} rows)")
+        return "\n".join(output)
+
+    def explain(self, stmt):
+        """Explain how a query will be executed without actually running it."""
+        if stmt["type"] == "JOIN":
+            return self.explain_join(stmt)
+        
+        if stmt["type"] == "SELECT":
+            return self.explain_select(stmt)
+        
+        raise ValueError("EXPLAIN not supported for this statement type")
+
+    def explain_join(self, stmt):
+        """Explain a JOIN query execution plan."""
+        left_table_name = stmt["left_table"]
+        right_table_name = stmt["right_table"]
+        left_column = stmt["left_column"]
+        right_column = stmt["right_column"]
+
+        # Validate tables exist
+        if left_table_name not in self.tables:
+            raise TableNotFoundError(f"Table '{left_table_name}' does not exist")
+        if right_table_name not in self.tables:
+            raise TableNotFoundError(f"Table '{right_table_name}' does not exist")
+
+        right_table = self.tables[right_table_name]
+
+        # Determine strategy based on index availability
+        if right_column in right_table.indexes:
+            strategy = f"INDEX LOOKUP ({right_table_name}.{right_column})"
+            cost = "O(n)"
+        else:
+            strategy = "NESTED LOOP JOIN"
+            cost = "O(n²)"
+
+        output = []
+        output.append("QUERY PLAN")
+        output.append("----------")
+        output.append("Operation: JOIN")
+        output.append("Join Type: INNER")
+        output.append(f"Left Table: {left_table_name}")
+        output.append(f"Right Table: {right_table_name}")
+        output.append(f"Join Condition: {left_table_name}.{left_column} = {right_table_name}.{right_column}")
+        output.append(f"Strategy: {strategy}")
+        output.append(f"Estimated Cost: {cost}")
+
+        return "\n".join(output)
+
+    def explain_select(self, stmt):
+        """Explain a SELECT query execution plan."""
+        table_name = stmt["table"]
+        where_clause = stmt.get("where")
+
+        # Validate table exists
+        if table_name not in self.tables:
+            raise TableNotFoundError(f"Table '{table_name}' does not exist")
+
+        table = self.tables[table_name]
+
+        output = []
+        output.append("QUERY PLAN")
+        output.append("----------")
+        output.append("Operation: SELECT")
+        output.append(f"Table: {table_name}")
+
+        if where_clause:
+            column = where_clause["column"]
+            if column in table.indexes:
+                output.append(f"Filter: {column} = ?")
+                output.append("Strategy: INDEX LOOKUP")
+                output.append("Estimated Cost: O(1)")
+            else:
+                output.append(f"Filter: {column} = ?")
+                output.append("Strategy: TABLE SCAN")
+                output.append("Estimated Cost: O(n)")
+        else:
+            output.append("Strategy: FULL TABLE SCAN")
+            output.append("Estimated Cost: O(n)")
+
+        return "\n".join(output)

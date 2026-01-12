@@ -3,6 +3,9 @@ import re
 def parse(sql):
     sql = sql.strip().rstrip(";")
 
+    if sql.upper().startswith("EXPLAIN"):
+        return parse_explain(sql)
+
     if sql.upper().startswith("CREATE TABLE"):
         return parse_create_table(sql)
 
@@ -10,6 +13,9 @@ def parse(sql):
         return parse_insert(sql)
 
     if sql.upper().startswith("SELECT"):
+        # Check if it's a JOIN query
+        if "JOIN" in sql.upper():
+            return parse_join(sql)
         return parse_select(sql)
 
     if sql.upper().startswith("UPDATE"):
@@ -170,4 +176,43 @@ def parse_delete(sql):
             "column": column,
             "value": value
         }
+    }
+
+def parse_join(sql):
+    # Pattern: SELECT * FROM table1 JOIN table2 ON table1.col = table2.col;
+    pattern = r"SELECT\s+\*\s+FROM\s+(\w+)\s+JOIN\s+(\w+)\s+ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)\s*$"
+    match = re.match(pattern, sql, re.IGNORECASE)
+
+    if not match:
+        raise ValueError("Invalid JOIN syntax. Required: SELECT * FROM table1 JOIN table2 ON table1.col = table2.col")
+
+    left_table = match.group(1)
+    right_table = match.group(2)
+    left_table_name = match.group(3)
+    left_column = match.group(4)
+    right_table_name = match.group(5)
+    right_column = match.group(6)
+
+    # Validate table names match
+    if left_table_name != left_table:
+        raise ValueError(f"Table name mismatch: '{left_table_name}' != '{left_table}'")
+    if right_table_name != right_table:
+        raise ValueError(f"Table name mismatch: '{right_table_name}' != '{right_table}'")
+
+    return {
+        "type": "JOIN",
+        "left_table": left_table,
+        "right_table": right_table,
+        "left_column": left_column,
+        "right_column": right_column
+    }
+
+def parse_explain(sql):
+    # Remove "EXPLAIN" prefix and parse the inner query
+    inner_sql = sql[len("EXPLAIN"):].strip()
+    inner_query = parse(inner_sql)
+    
+    return {
+        "type": "EXPLAIN",
+        "query": inner_query
     }
