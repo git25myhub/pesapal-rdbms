@@ -263,6 +263,10 @@ mydb/
 ├── table.py       # Table data model
 ├── exceptions.py  # Custom database errors
 ├── storage.py     # JSON-based persistence layer
+web/
+├── app.py         # Flask web application
+└── templates/
+    └── users.html # Web UI template
 ```
 
 Each layer has a single responsibility, closely mirroring how real database systems are structured.
@@ -447,6 +451,43 @@ DELETE FROM table_name WHERE column = value;
 ```
 
 This grammar will be extended incrementally.
+
+## 🌐 Web Demo
+
+A minimal Flask web application is included to demonstrate real-world usage of the database engine.
+
+The web app:
+- Uses the custom SQL engine directly (no SQLite, no ORM)
+- Performs CRUD operations via SQL strings
+- Demonstrates persistence, indexing, and constraints
+- Shows how the database can be consumed by other applications
+
+### How to Run
+
+1. Ensure Flask is installed:
+```bash
+pip install -r requirements.txt
+```
+
+2. Start the web application:
+```bash
+python web/app.py
+```
+
+3. Open your browser and navigate to:
+```
+http://127.0.0.1:5000
+```
+
+### Features
+
+- **View Users**: Displays all users from the database
+- **Add User**: Insert new users via web form
+- **Delete User**: Remove users with a single click
+- **Persistence**: All changes are automatically saved to disk
+- **Constraints**: Enforces PRIMARY KEY and UNIQUE constraints
+
+The web demo uses the same database engine as the REPL, proving that the database is a real, usable system, not just a command-line tool.
 
 ## 📚 References & Credits
 - PostgreSQL documentation (conceptual reference)
