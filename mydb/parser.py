@@ -69,15 +69,36 @@ def parse_insert(sql):
     }
 
 def parse_select(sql):
-    pattern = r"SELECT\s+\*\s+FROM\s+(\w+)"
+    # Pattern to match: SELECT * FROM table [WHERE column = value]
+    pattern = r"SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*=\s*(.+))?\s*$"
     match = re.match(pattern, sql, re.IGNORECASE)
 
     if not match:
-        raise ValueError("Only SELECT * FROM table is supported")
+        raise ValueError("Invalid SELECT syntax. Supported: SELECT * FROM table [WHERE column = value]")
 
     table = match.group(1)
+    where_clause = None
+
+    # If WHERE clause is present
+    if match.group(2):
+        column = match.group(2)
+        raw_value = match.group(3).strip()
+
+        # Parse value (string or integer)
+        if raw_value.startswith('"') and raw_value.endswith('"'):
+            value = raw_value[1:-1]
+        elif raw_value.isdigit():
+            value = int(raw_value)
+        else:
+            raise ValueError(f"Invalid WHERE value: {raw_value}")
+
+        where_clause = {
+            "column": column,
+            "value": value
+        }
 
     return {
         "type": "SELECT",
-        "table": table
+        "table": table,
+        "where": where_clause
     }

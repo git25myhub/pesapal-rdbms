@@ -98,6 +98,22 @@ id | email
 (2 rows)
 ```
 
+### ✅ Conditional Queries (`WHERE`)
+- Supports single-condition equality filters
+- Filters rows based on column values
+- Type-safe evaluation (no eval)
+
+Example:
+```sql
+SELECT * FROM users WHERE id = 1;
+SELECT * FROM users WHERE email = "jane@example.com";
+```
+
+Behavior:
+- Returns only rows matching the WHERE condition
+- Returns "(0 rows)" if no matches found
+- Raises error if column doesn't exist
+
 ### ✅ In-Memory Schema Representation
 - Tables are stored in memory using Python data structures
 - Each table tracks:
@@ -175,11 +191,26 @@ id | email
 2 | jane@example.com
 
 (2 rows)
+
+mydb> SELECT * FROM users WHERE id = 1;
+id | email
+----------
+1 | stephen@example.com
+
+(1 rows)
+
+mydb> SELECT * FROM users WHERE email = "jane@example.com";
+id | email
+----------
+2 | jane@example.com
+
+(1 rows)
 ```
 
 ## 🚧 Known Limitations (Intentional)
 - SQL statements must end with a semicolon (;)
-- Only `SELECT * FROM table_name` is supported (no WHERE, ORDER BY, or projections yet)
+- WHERE supports only equality (=); no AND/OR, no comparison operators (<, >, etc.)
+- No ORDER BY or column projections yet (only SELECT *)
 - Persistence is JSON-based (not crash-safe, no transactions yet)
 - No UPDATE or DELETE operations
 - No query optimization or indexing
@@ -204,7 +235,7 @@ CREATE TABLE table_name (
 
 INSERT INTO table_name VALUES (...);
 
-SELECT * FROM table_name;
+SELECT * FROM table_name [WHERE column = value];
 ```
 
 This grammar will be extended incrementally.

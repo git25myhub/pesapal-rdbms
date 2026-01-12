@@ -47,20 +47,39 @@ class Database:
             raise TableNotFoundError(f"Table '{table_name}' does not exist")
 
         table = self.tables[table_name]
+        headers = list(table.columns.keys())
 
-        if not table.rows:
+        # Apply WHERE filter if present
+        rows = table.rows
+        where_clause = ast.get("where")
+
+        if where_clause:
+            column = where_clause["column"]
+            value = where_clause["value"]
+
+            # Validate column exists
+            if column not in headers:
+                raise ValueError(f"Unknown column '{column}'")
+
+            # Filter rows based on WHERE condition
+            filtered_rows = []
+            for row in rows:
+                if row[column] == value:
+                    filtered_rows.append(row)
+            rows = filtered_rows
+
+        if not rows:
             return "(0 rows)"
 
         # Header
         output = []
-        headers = list(table.columns.keys())
         output.append(" | ".join(headers))
         output.append("-" * (len(output[0])))
 
         # Rows
-        for row in table.rows:
+        for row in rows:
             line = " | ".join(str(row[col]) for col in headers)
             output.append(line)
 
-        output.append(f"\n({len(table.rows)} rows)")
+        output.append(f"\n({len(rows)} rows)")
         return "\n".join(output)
