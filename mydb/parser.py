@@ -12,6 +12,12 @@ def parse(sql):
     if sql.upper().startswith("SELECT"):
         return parse_select(sql)
 
+    if sql.upper().startswith("UPDATE"):
+        return parse_update(sql)
+
+    if sql.upper().startswith("DELETE"):
+        return parse_delete(sql)
+
     raise ValueError("Unsupported SQL")
 
 def parse_create_table(sql):
@@ -101,4 +107,67 @@ def parse_select(sql):
         "type": "SELECT",
         "table": table,
         "where": where_clause
+    }
+
+def parse_update(sql):
+    # Pattern: UPDATE table SET column = value WHERE column = value;
+    pattern = r"UPDATE\s+(\w+)\s+SET\s+(\w+)\s*=\s*(.+?)\s+WHERE\s+(\w+)\s*=\s*(.+)\s*$"
+    match = re.match(pattern, sql, re.IGNORECASE)
+
+    if not match:
+        raise ValueError("Invalid UPDATE syntax. Required: UPDATE table SET column = value WHERE column = value")
+
+    table = match.group(1)
+    set_column = match.group(2)
+    set_raw = match.group(3).strip()
+    where_column = match.group(4)
+    where_raw = match.group(5).strip()
+
+    def parse_value(raw):
+        if raw.startswith('"') and raw.endswith('"'):
+            return raw[1:-1]
+        if raw.isdigit():
+            return int(raw)
+        raise ValueError(f"Invalid value: {raw}")
+
+    return {
+        "type": "UPDATE",
+        "table": table,
+        "set": {
+            "column": set_column,
+            "value": parse_value(set_raw)
+        },
+        "where": {
+            "column": where_column,
+            "value": parse_value(where_raw)
+        }
+    }
+
+def parse_delete(sql):
+    # Pattern: DELETE FROM table WHERE column = value;
+    pattern = r"DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*(.+)\s*$"
+    match = re.match(pattern, sql, re.IGNORECASE)
+
+    if not match:
+        raise ValueError("Invalid DELETE syntax. Required: DELETE FROM table WHERE column = value")
+
+    table = match.group(1)
+    column = match.group(2)
+    raw = match.group(3).strip()
+
+    # Parse value (string or integer)
+    if raw.startswith('"') and raw.endswith('"'):
+        value = raw[1:-1]
+    elif raw.isdigit():
+        value = int(raw)
+    else:
+        raise ValueError(f"Invalid WHERE value: {raw}")
+
+    return {
+        "type": "DELETE",
+        "table": table,
+        "where": {
+            "column": column,
+            "value": value
+        }
     }

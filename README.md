@@ -114,6 +114,25 @@ Behavior:
 - Returns "(0 rows)" if no matches found
 - Raises error if column doesn't exist
 
+### ✅ UPDATE and DELETE
+- UPDATE rows using conditional WHERE clauses
+- DELETE rows safely using WHERE filters
+- Full-table UPDATE/DELETE is intentionally disallowed (WHERE is mandatory)
+- Automatic persistence after mutations
+
+Examples:
+```sql
+UPDATE users SET email = "new@mail.com" WHERE id = 1;
+DELETE FROM users WHERE id = 2;
+```
+
+Behavior:
+- UPDATE modifies rows matching the WHERE condition
+- DELETE removes rows matching the WHERE condition
+- Both operations require WHERE clause (prevents accidental full-table operations)
+- Returns count of affected rows
+- Automatically saves changes to disk
+
 ### ✅ In-Memory Schema Representation
 - Tables are stored in memory using Python data structures
 - Each table tracks:
@@ -122,7 +141,7 @@ Behavior:
   - Rows (populated via INSERT statements)
 
 ### ✅ JSON-Based Disk Persistence
-- Automatic save to disk after every `CREATE TABLE` and `INSERT` operation
+- Automatic save to disk after every `CREATE TABLE`, `INSERT`, `UPDATE`, and `DELETE` operation
 - Data is automatically loaded when the REPL starts
 - Persistence uses JSON format stored in `data/db.json`
 - Human-readable format for easy debugging
@@ -205,14 +224,36 @@ id | email
 2 | jane@example.com
 
 (1 rows)
+
+mydb> UPDATE users SET email = "updated@mail.com" WHERE id = 1;
+1 row(s) updated
+
+mydb> SELECT * FROM users;
+id | email
+----------
+1 | updated@mail.com
+2 | jane@example.com
+
+(2 rows)
+
+mydb> DELETE FROM users WHERE id = 2;
+1 row(s) deleted
+
+mydb> SELECT * FROM users;
+id | email
+----------
+1 | updated@mail.com
+
+(1 rows)
 ```
 
 ## 🚧 Known Limitations (Intentional)
 - SQL statements must end with a semicolon (;)
 - WHERE supports only equality (=); no AND/OR, no comparison operators (<, >, etc.)
+- UPDATE supports single-column SET only (no multiple columns yet)
+- DELETE requires WHERE clause (full-table DELETE is intentionally disallowed)
 - No ORDER BY or column projections yet (only SELECT *)
 - Persistence is JSON-based (not crash-safe, no transactions yet)
-- No UPDATE or DELETE operations
 - No query optimization or indexing
 
 These limitations will be addressed incrementally in later stages.
@@ -236,6 +277,10 @@ CREATE TABLE table_name (
 INSERT INTO table_name VALUES (...);
 
 SELECT * FROM table_name [WHERE column = value];
+
+UPDATE table_name SET column = value WHERE column = value;
+
+DELETE FROM table_name WHERE column = value;
 ```
 
 This grammar will be extended incrementally.
