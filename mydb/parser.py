@@ -9,6 +9,9 @@ def parse(sql):
     if sql.upper().startswith("INSERT INTO"):
         return parse_insert(sql)
 
+    if sql.upper().startswith("SELECT"):
+        return parse_select(sql)
+
     raise ValueError("Unsupported SQL")
 
 def parse_create_table(sql):
@@ -63,4 +66,18 @@ def parse_insert(sql):
         "type": "INSERT",
         "table": table,
         "values": values
+    }
+
+def parse_select(sql):
+    pattern = r"SELECT\s+\*\s+FROM\s+(\w+)"
+    match = re.match(pattern, sql, re.IGNORECASE)
+
+    if not match:
+        raise ValueError("Only SELECT * FROM table is supported")
+
+    table = match.group(1)
+
+    return {
+        "type": "SELECT",
+        "table": table
     }

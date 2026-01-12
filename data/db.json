@@ -1,0 +1,28 @@
+{
+  "users": {
+    "columns": [
+      {
+        "name": "id",
+        "type": "INT",
+        "primary_key": true,
+        "unique": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "primary_key": false,
+        "unique": true
+      }
+    ],
+    "rows": [
+      [
+        1,
+        "stephen@example.com"
+      ],
+      [
+        2,
+        "jane@example.com"
+      ]
+    ]
+  }
+}

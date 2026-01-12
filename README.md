@@ -78,12 +78,43 @@ Behavior:
 - Insertion fails if the target table does not exist
 - Insertion fails if the number of values does not match the schema
 
+### ✅ Data Retrieval (`SELECT`)
+- Retrieve all rows from a table using `SELECT *`
+- Displays results in a tabular format
+- Includes row count output
+
+Example:
+```sql
+SELECT * FROM users;
+```
+
+Output:
+```
+id | email
+----------
+1 | stephen@example.com
+2 | jane@example.com
+
+(2 rows)
+```
+
 ### ✅ In-Memory Schema Representation
 - Tables are stored in memory using Python data structures
 - Each table tracks:
   - Column definitions
   - Constraints
   - Rows (populated via INSERT statements)
+
+### ✅ JSON-Based Disk Persistence
+- Automatic save to disk after every `CREATE TABLE` and `INSERT` operation
+- Data is automatically loaded when the REPL starts
+- Persistence uses JSON format stored in `data/db.json`
+- Human-readable format for easy debugging
+
+Behavior:
+- Data persists across REPL sessions
+- Tables and rows are automatically restored on startup
+- No manual save/load commands required
 
 ## 🧱 Current Architecture
 ```
@@ -93,6 +124,7 @@ mydb/
 ├── executor.py    # Executes parsed commands
 ├── table.py       # Table data model
 ├── exceptions.py  # Custom database errors
+├── storage.py     # JSON-based persistence layer
 ```
 
 Each layer has a single responsibility, closely mirroring how real database systems are structured.
@@ -135,22 +167,30 @@ mydb> INSERT INTO users VALUES (1, "stephen@example.com");
 
 mydb> INSERT INTO users VALUES (2, "jane@example.com");
 1 row inserted
+
+mydb> SELECT * FROM users;
+id | email
+----------
+1 | stephen@example.com
+2 | jane@example.com
+
+(2 rows)
 ```
 
 ## 🚧 Known Limitations (Intentional)
 - SQL statements must end with a semicolon (;)
-- Only `CREATE TABLE` and `INSERT INTO` are supported at this stage
-- No data retrieval (`SELECT`) yet
-- No data persistence yet (in-memory only)
-- No query optimization
+- Only `SELECT * FROM table_name` is supported (no WHERE, ORDER BY, or projections yet)
+- Persistence is JSON-based (not crash-safe, no transactions yet)
+- No UPDATE or DELETE operations
+- No query optimization or indexing
 
 These limitations will be addressed incrementally in later stages.
 
 ## 🛣️ Roadmap (Next Steps)
 Planned features:
-- SELECT queries
+- WHERE clause support
 - UPDATE and DELETE operations
-- Disk persistence (JSON-based)
+- Transaction support and crash-safe persistence
 - Primary & unique key indexing
 - Basic JOIN support
 - Simple web application demo using this database
@@ -163,6 +203,8 @@ CREATE TABLE table_name (
 );
 
 INSERT INTO table_name VALUES (...);
+
+SELECT * FROM table_name;
 ```
 
 This grammar will be extended incrementally.

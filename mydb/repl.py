@@ -1,8 +1,11 @@
 from mydb.parser import parse
 from mydb.executor import Database
+from mydb.storage import load_database
 
 def run_repl():
+    tables = load_database()
     db = Database()
+    db.tables = tables
     print("Welcome to MyDB. Type 'exit' to quit.")
 
     buffer = ""
