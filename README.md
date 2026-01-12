@@ -133,6 +133,28 @@ Behavior:
 - Returns count of affected rows
 - Automatically saves changes to disk
 
+### ✅ Indexing
+- Automatic hash-based indexes for PRIMARY KEY and UNIQUE columns
+- Indexes are used automatically for WHERE equality filters (O(1) lookup)
+- Indexes enforce PRIMARY KEY and UNIQUE constraints on INSERT and UPDATE
+- Indexes are automatically maintained on INSERT, UPDATE, and DELETE operations
+- Indexes are rebuilt on database load and after DELETE operations
+
+Example:
+```sql
+CREATE TABLE users (id INT PRIMARY KEY, email TEXT UNIQUE);
+INSERT INTO users VALUES (1, "stephen@example.com");
+INSERT INTO users VALUES (2, "jane@example.com");
+-- This will fail due to unique constraint:
+INSERT INTO users VALUES (3, "stephen@example.com");
+```
+
+Benefits:
+- O(1) lookup performance for indexed columns in WHERE clauses
+- Automatic constraint enforcement (no duplicate PRIMARY KEY or UNIQUE values)
+- Transparent to users - indexes are used automatically when available
+- Fallback to table scan for non-indexed columns
+
 ### ✅ In-Memory Schema Representation
 - Tables are stored in memory using Python data structures
 - Each table tracks:
@@ -245,6 +267,19 @@ id | email
 1 | updated@mail.com
 
 (1 rows)
+
+mydb> INSERT INTO users VALUES (2, "jane@example.com");
+1 row inserted
+
+mydb> SELECT * FROM users WHERE id = 1;
+id | email
+----------
+1 | updated@mail.com
+
+(1 rows)
+
+mydb> INSERT INTO users VALUES (1, "duplicate@example.com");
+Error: Duplicate value for indexed column 'id': 1
 ```
 
 ## 🚧 Known Limitations (Intentional)
@@ -254,7 +289,8 @@ id | email
 - DELETE requires WHERE clause (full-table DELETE is intentionally disallowed)
 - No ORDER BY or column projections yet (only SELECT *)
 - Persistence is JSON-based (not crash-safe, no transactions yet)
-- No query optimization or indexing
+- Indexes are hash-based (equality only, no range queries or B-trees)
+- No composite indexes (single-column indexes only)
 
 These limitations will be addressed incrementally in later stages.
 

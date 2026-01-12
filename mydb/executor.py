@@ -67,12 +67,21 @@ class Database:
             if column not in headers:
                 raise ValueError(f"Unknown column '{column}'")
 
-            # Filter rows based on WHERE condition
-            filtered_rows = []
-            for row in rows:
-                if row[column] == value:
-                    filtered_rows.append(row)
-            rows = filtered_rows
+            # Use index if available for O(1) lookup
+            if column in table.indexes:
+                index = table.indexes[column]["map"]
+                if value in index:
+                    row_index = index[value]
+                    rows = [table.rows[row_index]]
+                else:
+                    rows = []
+            else:
+                # Fallback to table scan
+                filtered_rows = []
+                for row in rows:
+                    if row[column] == value:
+                        filtered_rows.append(row)
+                rows = filtered_rows
 
         if not rows:
             return "(0 rows)"
@@ -112,8 +121,27 @@ class Database:
 
         # Update rows matching WHERE condition
         count = 0
-        for row in table.rows:
+        for row_index, row in enumerate(table.rows):
             if row[where_column] == where_value:
+                # If updating an indexed column, update the index
+                if set_column in table.indexes:
+                    old_key = row[set_column]
+                    new_key = set_value
+                    
+                    # Check for duplicate if new key already exists (and it's not the same row)
+                    if new_key in table.indexes[set_column]["map"]:
+                        existing_row_index = table.indexes[set_column]["map"][new_key]
+                        if existing_row_index != row_index:
+                            raise ValueError(f"Duplicate value for indexed column '{set_column}': {new_key}")
+                    
+                    # Remove old key from index
+                    if old_key in table.indexes[set_column]["map"]:
+                        del table.indexes[set_column]["map"][old_key]
+                    
+                    # Add new key to index
+                    table.indexes[set_column]["map"][new_key] = row_index
+                
+                # Update the row
                 row[set_column] = set_value
                 count += 1
 
@@ -140,6 +168,10 @@ class Database:
         before_count = len(table.rows)
         table.rows = [row for row in table.rows if row[where_column] != where_value]
         deleted_count = before_count - len(table.rows)
+
+        # Rebuild all indexes after deletion (simplest and most correct approach)
+        if deleted_count > 0:
+            table.rebuild_indexes()
 
         save_database(self.tables)
         return f"{deleted_count} row(s) deleted"

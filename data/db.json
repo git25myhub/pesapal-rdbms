@@ -14,11 +14,6 @@
         "unique": true
       }
     ],
-    "rows": [
-      [
-        1,
-        "updated@mail.com"
-      ]
-    ]
+    "rows": []
   }
 }

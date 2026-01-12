@@ -39,6 +39,9 @@ def load_database():
                 row[col_name] = value
             table.rows.append(row)
         
+        # Rebuild indexes from loaded rows
+        table.rebuild_indexes()
+        
         tables[table_name] = table
 
     return tables
